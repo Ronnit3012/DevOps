@@ -261,3 +261,68 @@ This **modular, reusable, and production-ready DynamoDB connector** includes:
 - **Unit testing** ✅  
 
 Would you like additional **logging, metrics, or security** features?
+
+
+Got it! Below is the updated **Python script** to create a **DynamoDB table** with two attributes:  
+
+- **`UserID`** (Partition Key, `STRING`)  
+- **`Name`** (Regular attribute, `STRING`)  
+
+---
+
+## **🔹 Python Code to Create Table**
+```python
+import boto3
+
+# Initialize DynamoDB client
+dynamodb = boto3.client("dynamodb", region_name="us-east-1")  # Change region if needed
+
+def create_table(table_name):
+    try:
+        response = dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {"AttributeName": "UserID", "KeyType": "HASH"}  # Partition key
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "UserID", "AttributeType": "S"},  # 'S' for String
+                {"AttributeName": "Name", "AttributeType": "S"}  # 'S' for String
+            ],
+            ProvisionedThroughput={
+                "ReadCapacityUnits": 5,
+                "WriteCapacityUnits": 5
+            }
+        )
+        print(f"Table {table_name} creation started. Status: {response['TableDescription']['TableStatus']}")
+    except dynamodb.exceptions.ResourceInUseException:
+        print(f"Table {table_name} already exists.")
+    except Exception as e:
+        print(f"Error creating table: {e}")
+
+# Example usage
+create_table("Users")
+```
+
+---
+
+## **🔹 Explanation**
+1. **`UserID` is the primary key** → Ensures unique users.  
+2. **`Name` is a regular attribute** → Stored with each item but not indexed.  
+3. **`ProvisionedThroughput`** → Sets read and write capacity (change to `PAY_PER_REQUEST` for auto-scaling).  
+
+---
+
+## **🔹 Insert Data into the Table**
+After creating the table, you can add users like this:  
+```python
+def insert_user(user_id, name):
+    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    table = dynamodb.Table("Users")
+    table.put_item(Item={"UserID": user_id, "Name": name})
+    print(f"User {user_id} added.")
+
+# Example usage
+insert_user("123", "Alice")
+```
+
+Would you like to add **secondary indexes**, **transactions**, or **auto-scaling**? 🚀
