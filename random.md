@@ -326,3 +326,121 @@ insert_user("123", "Alice")
 ```
 
 Would you like to add **secondary indexes**, **transactions**, or **auto-scaling**? 🚀
+
+Here is how the same code can be adapted for **DynamoDB** while considering its limitations (e.g., no direct SQL-like queries). The implementation uses **DynamoDB Connector**, **QueryExecutor**, and **ParallelExecutor** classes designed for DynamoDB:
+
+---
+
+### **Updated Code for DynamoDB**
+
+```python
+import logging
+from fastapi import APIRouter, HTTPException, status
+from src.connectors.dynamodb.connector import DynamoDBConnector, QueryExecutor, ParallelExecutor
+from src.utils.config import PROFILE, DYNAMODB_CREDS
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+@router.get("/dynamodb_health_status", tags=['health stats'])
+async def dynamodb_health_status():
+    logger.info("Fetching all status for DynamoDB")
+    try:
+        # Fetch DynamoDB credentials
+        creds = DYNAMODB_CREDS[PROFILE]
+        db = DynamoDBConnector(creds)
+        query_executor = QueryExecutor(db)
+        parallel_executor = ParallelExecutor(query_executor)
+
+        # Connect to DynamoDB
+        await db.connect()
+        connection_status = db._initialized
+
+        # Create a test table if it doesn't exist
+        table_name = "test_table"
+        await query_executor.create_table(
+            table_name=table_name,
+            key_schema=[
+                {"AttributeName": "id", "KeyType": "HASH"}  # Partition key
+            ],
+            attribute_definitions=[
+                {"AttributeName": "id", "AttributeType": "S"}  # String type
+            ],
+            provisioned_throughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5}
+        )
+
+        # Insert items into the test table
+        items = [
+            {"id": "1", "name": "Alice"},
+            {"id": "2", "name": "Bob"}
+        ]
+        await query_executor.execute_transaction([
+            {"Put": {"TableName": table_name, "Item": item}} for item in items
+        ])
+        transaction_execution_status = True
+
+        # Scan the table to verify data
+        scan_result = await query_executor.execute_query({"TableName": table_name})
+        query_execution_status = len(scan_result["Items"]) >= 2
+
+        # Parallel queries (for illustration, we use get-item requests)
+        parallel_queries = [
+            {"TableName": table_name, "Key": {"id": {"S": "1"}}},
+            {"TableName": table_name, "Key": {"id": {"S": "2"}}}
+        ]
+        parallel_results = await parallel_executor.execute_parallel_queries(parallel_queries)
+        parallel_query_execution_status = all(result.get("Item") for result in parallel_results)
+
+        # Delete all items from the table
+        for item in scan_result["Items"]:
+            await query_executor.execute_query({
+                "TableName": table_name,
+                "Key": {"id": {"S": item["id"]["S"]}}
+            }, operation="DeleteItem")
+        deletion_result = await query_executor.execute_query({"TableName": table_name})
+        query_deletion_status = len(deletion_result["Items"]) == 0
+
+        # Compile health stats
+        out_data = {
+            "connection_status": connection_status,
+            "query_execution_status": query_execution_status,
+            "query_deletion_status": query_deletion_status,
+            "transaction_execution_status": transaction_execution_status,
+            "parallel_query_execution_status": parallel_query_execution_status
+        }
+
+        return {'status': "success", "health_stats": out_data}
+
+    except Exception as e:
+        logger.error(f"Health check failed, exception: {e}", stack_info=True, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error fetching records: {str(e)}")
+```
+
+---
+
+### **Explanation of Changes**
+1. **Connector**:
+   - Switched to `DynamoDBConnector` from `src.connectors.dynamodb.connector`.
+
+2. **Create Table**:
+   - Added a `create_table` operation using `QueryExecutor`.
+
+3. **CRUD Operations**:
+   - For insertion: Used `PutItem` inside a `TransactWriteItems` call.
+   - For querying: Used `Scan` to fetch all data.
+   - For deletion: Used `DeleteItem` for each scanned item.
+
+4. **Parallel Queries**:
+   - Simulated parallel queries using `GetItem` calls.
+
+5. **Health Metrics**:
+   - Replaced SQL-like health checks with DynamoDB-specific operations.
+
+---
+
+### **Assumptions**
+- The `DynamoDBConnector`, `QueryExecutor`, and `ParallelExecutor` classes handle DynamoDB-specific operations as implemented earlier.
+- The `DYNAMODB_CREDS` is a dictionary containing AWS credentials and configurations.
+
+Would you like help testing or extending this solution further?
