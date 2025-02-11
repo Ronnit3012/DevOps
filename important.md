@@ -261,3 +261,146 @@ logger.info("Transaction completed.")
 ---
 
 This structure ensures maintainability and modularity. Let me know if you'd like to expand or modify this!
+
+
+Here’s how you can add **Create Table** and **Delete Table** queries to the `DynamoDBQueries` class. These queries are useful for managing table lifecycle operations programmatically.
+
+---
+
+### **Update: Parameterized Queries (`utils/queries.py`)**
+
+Add `create_table` and `delete_table` methods to the `DynamoDBQueries` class.
+
+```python
+from core.error_handler import handle_dynamodb_errors
+from core.logger import logger
+
+
+class DynamoDBQueries:
+    def __init__(self, resource):
+        """Initialize with a DynamoDB resource."""
+        self.resource = resource
+
+    @handle_dynamodb_errors
+    def create_table(self, table_name, key_schema, attribute_definitions, provisioned_throughput):
+        """
+        Create a DynamoDB table.
+        :param table_name: Name of the table to create.
+        :param key_schema: Key schema for the table.
+        :param attribute_definitions: Attribute definitions for the table.
+        :param provisioned_throughput: Provisioned throughput (Read/Write capacity).
+        :return: Response from DynamoDB.
+        """
+        logger.info(f"Creating table {table_name}...")
+        return self.resource.create_table(
+            TableName=table_name,
+            KeySchema=key_schema,
+            AttributeDefinitions=attribute_definitions,
+            ProvisionedThroughput=provisioned_throughput
+        )
+
+    @handle_dynamodb_errors
+    def delete_table(self, table_name):
+        """
+        Delete a DynamoDB table.
+        :param table_name: Name of the table to delete.
+        :return: Response from DynamoDB.
+        """
+        logger.info(f"Deleting table {table_name}...")
+        table = self.resource.Table(table_name)
+        return table.delete()
+```
+
+---
+
+### **Example Usage**
+
+Here's how you can use these methods to create and delete tables in DynamoDB.
+
+#### **Example (`examples/demo.py`)**
+
+```python
+from core.session_manager import DynamoDBSessionManager
+from utils.queries import DynamoDBQueries
+from core.logger import logger
+
+# Initialize session manager and resource
+manager = DynamoDBSessionManager()
+resource = manager.get_resource()
+
+# Initialize the DynamoDBQueries instance
+queries = DynamoDBQueries(resource)
+
+# Table details
+table_name = "example_table"
+key_schema = [
+    {"AttributeName": "id", "KeyType": "HASH"}  # Partition key
+]
+attribute_definitions = [
+    {"AttributeName": "id", "AttributeType": "S"}  # String type
+]
+provisioned_throughput = {
+    "ReadCapacityUnits": 5,
+    "WriteCapacityUnits": 5
+}
+
+# Create a table
+try:
+    response = queries.create_table(table_name, key_schema, attribute_definitions, provisioned_throughput)
+    logger.info(f"Table {table_name} created successfully!")
+except Exception as e:
+    logger.error(f"Failed to create table {table_name}: {e}")
+
+# Perform other operations...
+
+# Delete the table
+try:
+    response = queries.delete_table(table_name)
+    logger.info(f"Table {table_name} deleted successfully!")
+except Exception as e:
+    logger.error(f"Failed to delete table {table_name}: {e}")
+```
+
+---
+
+### **Key Concepts**
+
+#### **1. Create Table**
+- **Key Schema**: Specifies the primary key (partition and/or sort key).
+- **Attribute Definitions**: Defines the attributes used in the key schema and indexes.
+- **Provisioned Throughput**: Configures the read and write capacity units (RCUs and WCUs).
+
+Example for a **table with only a partition key**:
+```python
+key_schema = [
+    {"AttributeName": "id", "KeyType": "HASH"}  # Partition key
+]
+attribute_definitions = [
+    {"AttributeName": "id", "AttributeType": "S"}  # String type
+]
+provisioned_throughput = {
+    "ReadCapacityUnits": 5,
+    "WriteCapacityUnits": 5
+}
+```
+
+#### **2. Delete Table**
+The `delete_table` method simply deletes the specified table. Deletion is immediate, but resources might take a short time to become available again.
+
+---
+
+### **Additional Enhancements**
+1. **Wait for Table Creation/Deletion**: 
+   - Use the `wait_until_exists` or `wait_until_not_exists` methods on the table object.
+   ```python
+   table = resource.Table(table_name)
+   table.wait_until_exists()
+   logger.info(f"Table {table_name} is now active.")
+   ```
+
+2. **Handle On-Demand Mode (Optional)**:
+   - If you're using **on-demand capacity mode**, you don't need to provide `ProvisionedThroughput`.
+
+---
+
+This addition ensures the connector can handle table creation and deletion operations seamlessly. Let me know if you'd like to add more features or extend this functionality!
