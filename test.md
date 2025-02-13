@@ -1,33 +1,28 @@
-Here’s how you can write unit tests for the `get_session`, `get_client`, `get_resource`, and `get_async_client` functions in your functional-based session manager. These tests use the `unittest` library along with `unittest.mock` to mock AWS SDK calls.
+Here’s how you can write functional-based tests for `get_session`, `get_client`, `get_resource`, and `get_async_client`. Each test is a standalone function without relying on a class-based `unittest.TestCase` structure.
 
-### Test Code:
+### Functional-Based Test Code
 
 ```python
-import unittest
+import asyncio
 from unittest.mock import patch, MagicMock
 from core.session_manager import get_session, get_client, get_resource, get_async_client
 
-# Mock settings
-AWS_REGION = "us-east-1"
-AWS_RETRY_CONFIG = {"max_attempts": 5}
-TIMEOUT = 10
 
-
-class TestDynamoDBSessionManager(unittest.TestCase):
-    @patch("core.session_manager.boto3.Session")
-    def test_get_session(self, mock_boto3_session):
-        """Test the get_session function."""
+def test_get_session():
+    """Test the get_session function."""
+    with patch("core.session_manager.boto3.Session") as mock_boto3_session:
         mock_session = MagicMock()
         mock_boto3_session.return_value = mock_session
 
         session = get_session()
 
-        self.assertEqual(session, mock_session)
-        mock_boto3_session.assert_called_once_with(region_name=AWS_REGION)
+        assert session == mock_session
+        mock_boto3_session.assert_called_once_with(region_name="us-east-1")  # Replace with AWS_REGION
 
-    @patch("core.session_manager.boto3.Session")
-    def test_get_client(self, mock_boto3_session):
-        """Test the get_client function."""
+
+def test_get_client():
+    """Test the get_client function."""
+    with patch("core.session_manager.boto3.Session") as mock_boto3_session:
         mock_session = MagicMock()
         mock_client = MagicMock()
         mock_session.client.return_value = mock_client
@@ -35,16 +30,17 @@ class TestDynamoDBSessionManager(unittest.TestCase):
 
         client = get_client()
 
-        self.assertEqual(client, mock_client)
-        mock_boto3_session.assert_called_once_with(region_name=AWS_REGION)
+        assert client == mock_client
+        mock_boto3_session.assert_called_once_with(region_name="us-east-1")  # Replace with AWS_REGION
         mock_session.client.assert_called_once_with(
             "dynamodb",
-            config=unittest.mock.ANY,  # Ensuring Config object is passed
+            config=MagicMock(),  # Ensuring Config object is passed
         )
 
-    @patch("core.session_manager.boto3.Session")
-    def test_get_resource(self, mock_boto3_session):
-        """Test the get_resource function."""
+
+def test_get_resource():
+    """Test the get_resource function."""
+    with patch("core.session_manager.boto3.Session") as mock_boto3_session:
         mock_session = MagicMock()
         mock_resource = MagicMock()
         mock_session.resource.return_value = mock_resource
@@ -52,13 +48,14 @@ class TestDynamoDBSessionManager(unittest.TestCase):
 
         resource = get_resource()
 
-        self.assertEqual(resource, mock_resource)
-        mock_boto3_session.assert_called_once_with(region_name=AWS_REGION)
+        assert resource == mock_resource
+        mock_boto3_session.assert_called_once_with(region_name="us-east-1")  # Replace with AWS_REGION
         mock_session.resource.assert_called_once_with("dynamodb")
 
-    @patch("core.session_manager.aioboto3.Session")
-    async def test_get_async_client(self, mock_aioboto3_session):
-        """Test the get_async_client function."""
+
+async def test_get_async_client():
+    """Test the get_async_client function."""
+    with patch("core.session_manager.aioboto3.Session") as mock_aioboto3_session:
         mock_session = MagicMock()
         mock_async_client = MagicMock()
         mock_session.client.return_value = mock_async_client
@@ -66,43 +63,60 @@ class TestDynamoDBSessionManager(unittest.TestCase):
 
         async_client = await get_async_client()
 
-        self.assertEqual(async_client, mock_async_client)
+        assert async_client == mock_async_client
         mock_aioboto3_session.assert_called_once()
-        mock_session.client.assert_called_once_with("dynamodb", region_name=AWS_REGION)
+        mock_session.client.assert_called_once_with("dynamodb", region_name="us-east-1")  # Replace with AWS_REGION
+
+
+def run_tests():
+    """Run all tests."""
+    print("Running test_get_session...")
+    test_get_session()
+    print("Passed ✅\n")
+
+    print("Running test_get_client...")
+    test_get_client()
+    print("Passed ✅\n")
+
+    print("Running test_get_resource...")
+    test_get_resource()
+    print("Passed ✅\n")
+
+    print("Running test_get_async_client...")
+    asyncio.run(test_get_async_client())
+    print("Passed ✅\n")
 
 
 if __name__ == "__main__":
-    unittest.main()
+    run_tests()
 ```
 
 ---
 
-### Explanation of the Tests:
+### Explanation:
+1. **Independent Test Functions**:
+   - Each test is implemented as a standalone function. This follows a functional programming style.
 
-1. **Mocking `boto3` and `aioboto3`**:
-   - `boto3.Session` and `aioboto3.Session` are mocked using `@patch` decorators. This prevents actual AWS calls during testing.
-   - `MagicMock` is used to simulate the behavior of AWS sessions, clients, and resources.
+2. **Patching**:
+   - The `@patch` decorators are replaced with `with patch(...)` for inline mocking.
 
-2. **Testing `get_session`**:
-   - Ensures the function initializes a session correctly with the region name.
+3. **Assertions**:
+   - Using `assert` instead of `self.assertEqual` or similar methods from `unittest`.
 
-3. **Testing `get_client`**:
-   - Verifies that the DynamoDB client is created with the correct configuration and is returned properly.
+4. **Running Tests**:
+   - The `run_tests()` function sequentially calls each test function.
+   - For asynchronous tests, `asyncio.run()` is used to handle the coroutine.
 
-4. **Testing `get_resource`**:
-   - Confirms the resource initialization using the session and ensures the `dynamodb` resource is fetched.
-
-5. **Testing `get_async_client`**:
-   - Uses `async def` to test the asynchronous `get_async_client`.
-   - Mocks the `aioboto3` session and its client creation method.
+5. **Output**:
+   - Prints the status of each test (e.g., `Passed ✅`) for better readability.
 
 ---
 
 ### Running the Tests:
-- Save the test file and run it using:
+- Save the code in a Python file and execute it directly:
   ```bash
-  python -m unittest test_file_name.py
+  python test_file_name.py
   ```
-- Replace `test_file_name.py` with the actual name of the file containing the tests.
+- Replace `test_file_name.py` with the name of the file containing this test script.
 
-This test suite ensures all your session manager functions behave as expected while keeping the tests isolated from AWS services.
+This approach eliminates class dependencies, keeping the tests lightweight and functional.
