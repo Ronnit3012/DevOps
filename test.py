@@ -1,36 +1,56 @@
 from unittest.mock import patch, MagicMock
-from core.session_manager import get_client
+import pytest
+import botocore.exceptions
+from core.logger import logger
+from core.decorators import handle_dynamodb_errors
 
 
-def test_get_client():
-    """Test the get_client function by mocking its dependencies."""
-    with patch("core.session_manager.get_session") as mock_get_session, \
-         patch("core.session_manager.boto3.session.Config") as mock_config:
+# Sample function to test the decorator
+@handle_dynamodb_errors
+def dummy_function(should_fail, error_type=None):
+    if should_fail:
+        if error_type == "NoCredentialsError":
+            raise botocore.exceptions.NoCredentialsError()
+        elif error_type == "ClientError":
+            raise botocore.exceptions.ClientError(
+                {"Error": {"Message": "A ClientError occurred"}}, "operation_name"
+            )
+        else:
+            raise Exception("An unexpected error")
+    return "Success"
 
-        # Mock session and client
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
 
-        # Mock configuration
-        mock_config_instance = MagicMock()
-        mock_config.return_value = mock_config_instance
+def test_handle_no_credentials_error():
+    """Test handling of NoCredentialsError."""
+    with patch("core.logger.logger.error") as mock_logger:
+        with pytest.raises(botocore.exceptions.NoCredentialsError):
+            dummy_function(should_fail=True, error_type="NoCredentialsError")
+        
+        mock_logger.assert_called_once_with("AWS credentials not found.")
 
-        # Set the return value of get_session
-        mock_get_session.return_value = mock_session
 
-        # Call the function under test
-        client = get_client()
+def test_handle_client_error():
+    """Test handling of ClientError."""
+    with patch("core.logger.logger.error") as mock_logger:
+        with pytest.raises(botocore.exceptions.ClientError):
+            dummy_function(should_fail=True, error_type="ClientError")
+        
+        mock_logger.assert_called_once_with("DynamoDB Client Error: A ClientError occurred")
 
-        # Assertions
-        assert client == mock_client  # Verify the returned client is as expected
-        mock_get_session.assert_called_once()  # Ensure get_session was called
-        mock_session.client.assert_called_once_with(
-            "dynamodb",
-            config=mock_config_instance  # Ensure Config was passed to client
-        )
-        mock_config.assert_called_once_with(
-            retries=MagicMock(),  # Mocked retries config
-            connect_timeout=MagicMock(),  # Mocked timeout config
-            read_timeout=MagicMock()  # Mocked timeout config
-        )
+
+def test_handle_unexpected_error():
+    """Test handling of unexpected errors."""
+    with patch("core.logger.logger.error") as mock_logger:
+        with pytest.raises(Exception, match="An unexpected error"):
+            dummy_function(should_fail=True, error_type="UnexpectedError")
+        
+        mock_logger.assert_called_once_with("An unexpected error occurred: An unexpected error")
+
+
+def test_successful_execution():
+    """Test successful execution without errors."""
+    with patch("core.logger.logger.error") as mock_logger:
+        result = dummy_function(should_fail=False)
+
+        assert result == "Success"
+        mock_logger.assert_not_called()
