@@ -1,51 +1,28 @@
 {
-  "migrationPlan": {
-    "waves": [
-      {
-        "waveNumber": 1,
-        "description": "Core infrastructure changes",
-        "steps": [
-          {
-            "layer": "networking",
-            "fromVersion": "1.0.0",
-            "toVersion": "1.1.0",
-            "type": "minor",
-            "autoRecipe": "recipes/networking/upgrade-1.0.0-to-1.1.0.js",
-            "manualSteps": [
-              "Update VPC CIDR block in terraform.tfvars",
-              "Verify subnet allocation against new defaults"
-            ],
-            "migrationGuide": "https://docs.company.com/networking/1.1.0-migration"
-          },
-          {
-            "layer": "security",
-            "fromVersion": "1.2.0",
-            "toVersion": "1.3.0",
-            "type": "minor",
-            "autoRecipe": "recipes/security/upgrade-1.2.0-to-1.3.0.js",
-            "manualSteps": [
-              "Check new IAM policies for ECS",
-              "Validate security groups against compliance checklist"
-            ],
-            "migrationGuide": "https://docs.company.com/security/1.3.0-migration"
-          }
-        ]
-      },
-      {
-        "waveNumber": 2,
-        "description": "Application layer updates",
-        "steps": [
-          {
-            "layer": "ecs",
-            "fromVersion": "2.0.0",
-            "toVersion": "2.1.0",
-            "type": "minor",
-            "autoRecipe": "recipes/ecs/upgrade-2.0.0-to-2.1.0.js",
-            "manualSteps": [],
-            "migrationGuide": "https://docs.company.com/ecs/2.1.0-migration"
-          }
-        ]
-      }
-    ]
-  }
+  "waves": [
+    {
+      "waveNumber": 1,
+      "description": "Upgrading from 1.0.0 to next minor version",
+      "fromVersion": "1.0.0",
+      "toVersion": "1.1.0",
+      "layers": [
+        {
+          "name": "base",
+          "currentVersion": "1.0.0",
+          "nextVersion": "1.1.0",
+          "recipe": "rewrite-recipe run base --from 1.0.0 --to 1.1.0",
+          "requiresManual": false,
+          "guide": null
+        },
+        {
+          "name": "data",
+          "currentVersion": "1.0.0",
+          "nextVersion": "1.1.0",
+          "recipe": "rewrite-recipe run data --from 1.0.0 --to 1.1.0",
+          "requiresManual": true,
+          "guide": "https://docs.mycompany.com/migration/data-1.0.0-to-1.1.0"
+        }
+      ]
+    }
+  ]
 }
