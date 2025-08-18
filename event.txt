@@ -1,0 +1,31 @@
+Can you match the short survey word with the real feedback?
+
+Tone Difference Recap:
+
+Yes → Direct approval (short, clear agreement).
+Good → Positive experience, generally enjoyed it.
+Satisfied → Positive plus some sense of fulfillment/completeness.
+Could be better → Constructive criticism leaning negative.
+Neutral → Mixed / balanced.
+No → Negative / dissatisfaction.
+
+Yes:
+⦁	 I enjoyed the hackathon, it was a great way to collaborate with colleagues from other teams and learn new tools.
+⦁	The talks were inspiring, especially the keynote, which gave me fresh perspectives on innovation.
+
+No:
+⦁	I couldn’t attend the session because the training room location wasn’t mentioned in the invite.
+
+Satisfied:
+⦁	I learned new tools and concepts, though some sessions felt slightly rushed.
+⦁	Overall the event was well run, but communication about session location could improve.
+
+Could be better:
+⦁	While the projects were innovative, presentations felt rushed and lacked clarity.
+
+Neutral:
+⦁	Sessions had useful content, though some went too deep while others stayed very high-level.
+⦁	I liked the idea pitches, but many felt repetitive and lacked originality.
+
+Good:
+⦁	Collaborating with people across teams and LOBs was a refreshing experience.
